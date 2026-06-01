@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouchet - Départs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; padding: 16px; }
+        h1 { font-size: 18px; margin-bottom: 4px; }
+        #last-update { font-size: 12px; color: #888; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        tr { border-bottom: 1px solid #222; }
+        td { padding: 10px 4px; font-size: 15px; }
+        .line { font-weight: bold; width: 45px; }
+        .dest { color: #ccc; }
+        .time { text-align: right; font-variant-numeric: tabular-nums; }
+        .soon { color: #4cd964; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🚏 Vernier, Bouchet</h1>
+    <div id="last-update">Chargement...</div>
+    <table id="board"><tbody></tbody></table>
+
+    <script>
+        async function fetchDepartures() {
+            const url = "https://timetable.search.ch/api/stationboard.json?stop=Vernier%2C%20Bouchet&limit=20&show_delays=1";
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                const tbody = document.querySelector("#board tbody");
+                tbody.innerHTML = "";
+
+                data.connections.forEach(c => {
+                    const line = c.line || "?";
+                    const dest = c.terminal.name;
+                    const dep = new Date(c.time.replace(" ", "T"));
+                    const now = new Date();
+                    const diffMin = Math.round((dep - now) / 60000);
+                    const timeStr = diffMin <= 0 ? "now" :
+                                    diffMin < 60 ? `${diffMin} min` :
+                                    dep.toTimeString().slice(0,5);
+                    const soon = diffMin <= 2;
+
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td class="line">${line}</td>
+                        <td class="dest">${dest}</td>
+                        <td class="time ${soon ? 'soon' : ''}">${timeStr}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById("last-update").textContent =
+                    "Mis à jour : " + new Date().toTimeString().slice(0,8);
+            } catch(e) {
+                document.getElementById("last-update").textContent = "Erreur : " + e.message;
+            }
+        }
+
+        fetchDepartures();
+        setInterval(fetchDepartures, 30000);
+    </script>
+</body>
+</html>
