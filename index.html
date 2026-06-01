@@ -1,66 +1,171 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bouchet - Départs</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; padding: 16px; }
-        h1 { font-size: 18px; margin-bottom: 4px; }
-        #last-update { font-size: 12px; color: #888; margin-bottom: 16px; }
-        table { width: 100%; border-collapse: collapse; }
-        tr { border-bottom: 1px solid #222; }
-        td { padding: 10px 4px; font-size: 15px; }
-        .line { font-weight: bold; width: 45px; }
-        .dest { color: #ccc; }
-        .time { text-align: right; font-variant-numeric: tabular-nums; }
-        .soon { color: #4cd964; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TPG Terminal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0d0d;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      padding: 30px 20px;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+    h1 span { color: #fff; }
+    .input-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .prompt { color: #00ff41; font-size: 16px; }
+    input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 16px;
+      padding: 4px 8px;
+      outline: none;
+      width: 260px;
+    }
+    button {
+      background: transparent;
+      border: 1px solid #00ff41;
+      color: #00ff41;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      padding: 4px 12px;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    button:hover {
+      background: #00ff41;
+      color: #0d0d0d;
+    }
+    #result { margin-top: 10px; }
+    .stop-name {
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      text-align: left;
+      color: #007a1f;
+      border-bottom: 1px solid #007a1f;
+      padding: 4px 10px;
+      letter-spacing: 1px;
+    }
+    td {
+      padding: 5px 10px;
+      border-bottom: 1px dashed #1a3a1a;
+    }
+    tr:hover td { background: #0f1f0f; }
+    .line-badge {
+      color: #ffff00;
+      font-weight: bold;
+    }
+    .delay { color: #ff4444; }
+    .ok { color: #00ff41; }
+    .error { color: #ff4444; margin-top: 10px; }
+    .loading { color: #007a1f; }
+  </style>
 </head>
 <body>
-    <h1>🚏 Vernier, Bouchet</h1>
-    <div id="last-update">Chargement...</div>
-    <table id="board"><tbody></tbody></table>
 
-    <script>
-        async function fetchDepartures() {
-            const url = "https://timetable.search.ch/api/stationboard.json?stop=Vernier%2C%20Bouchet&limit=20&show_delays=1";
-            try {
-                const res = await fetch(url);
-                const data = await res.json();
-                const tbody = document.querySelector("#board tbody");
-                tbody.innerHTML = "";
+  <h1>[ <span>TPG</span> // TERMINAL ]</h1>
 
-                data.connections.forEach(c => {
-                    const line = c.line || "?";
-                    const dest = c.terminal.name;
-                    const dep = new Date(c.time.replace(" ", "T"));
-                    const now = new Date();
-                    const diffMin = Math.round((dep - now) / 60000);
-                    const timeStr = diffMin <= 0 ? "now" :
-                                    diffMin < 60 ? `${diffMin} min` :
-                                    dep.toTimeString().slice(0,5);
-                    const soon = diffMin <= 2;
+  <div class="input-line">
+    <span class="prompt">&gt;</span>
+    <input type="text" id="stopInput" placeholder="arrêt..." autofocus />
+    <button onclick="loadDepartures()">EXEC</button>
+  </div>
 
-                    const tr = document.createElement("tr");
-                    tr.innerHTML = `
-                        <td class="line">${line}</td>
-                        <td class="dest">${dest}</td>
-                        <td class="time ${soon ? 'soon' : ''}">${timeStr}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
+  <div id="result"></div>
 
-                document.getElementById("last-update").textContent =
-                    "Mis à jour : " + new Date().toTimeString().slice(0,8);
-            } catch(e) {
-                document.getElementById("last-update").textContent = "Erreur : " + e.message;
-            }
+  <script>
+    document.getElementById('stopInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') loadDepartures();
+    });
+
+    async function loadDepartures() {
+      const stop = document.getElementById('stopInput').value.trim();
+      const result = document.getElementById('result');
+
+      if (!stop) {
+        result.innerHTML = '<p class="error">// ERREUR : aucun arrêt spécifié</p>';
+        return;
+      }
+
+      result.innerHTML = '<p class="loading">// chargement...</p>';
+
+      const encoded = encodeURIComponent(stop);
+      const url = `https://transport.opendata.ch/v1/stationboard?station=${encoded}&limit=20`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data.stationboard || data.stationboard.length === 0) {
+          result.innerHTML = '<p class="error">// ERREUR : arrêt introuvable ou aucun départ</p>';
+          return;
         }
 
-        fetchDepartures();
-        setInterval(fetchDepartures, 30000);
-    </script>
+        const stationName = data.station?.name || stop;
+        let html = `<p class="stop-name">// ARRÊT : ${stationName.toUpperCase()}</p>`;
+        html += `
+          <table>
+            <thead>
+              <tr>
+                <th>LIGNE</th>
+                <th>DIRECTION</th>
+                <th>DÉPART</th>
+                <th>STATUT</th>
+              </tr>
+            </thead>
+            <tbody>`;
+
+        data.stationboard.forEach(dep => {
+          const line = dep.number || '?';
+          const direction = dep.to || '?';
+          const time = dep.stop?.departure
+            ? new Date(dep.stop.departure).toLocaleTimeString('fr-CH', {hour: '2-digit', minute: '2-digit'})
+            : '?';
+          const delay = dep.stop?.delay;
+          const statusHtml = delay
+            ? `<span class="delay">+${delay} min</span>`
+            : `<span class="ok">OK</span>`;
+
+          html += `
+            <tr>
+              <td class="line-badge">${line}</td>
+              <td>${direction}</td>
+              <td>${time}</td>
+              <td>${statusHtml}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+        result.innerHTML = html;
+
+      } catch (e) {
+        result.innerHTML = '<p class="error">// ERREUR : impossible de contacter l\'API</p>';
+      }
+    }
+  </script>
 </body>
 </html>
