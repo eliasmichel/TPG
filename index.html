@@ -83,6 +83,11 @@
     .ok { color: #00ff41; }
     .error { color: #ff4444; margin-top: 10px; }
     .loading { color: #007a1f; }
+    #lastUpdate {
+      margin-top: 16px;
+      color: #007a1f;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -96,6 +101,7 @@
   </div>
 
   <div id="result"></div>
+  <div id="lastUpdate"></div>
 
   <script>
     document.getElementById('stopInput').addEventListener('keydown', function(e) {
@@ -162,10 +168,19 @@
         html += '</tbody></table>';
         result.innerHTML = html;
 
+        const now = new Date().toLocaleTimeString('fr-CH', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+        document.getElementById('lastUpdate').textContent = `// MAJ : ${now}`;
+
       } catch (e) {
         result.innerHTML = '<p class="error">// ERREUR : impossible de contacter l\'API</p>';
       }
     }
+
+    setInterval(() => {
+      if (document.getElementById('stopInput').value.trim()) {
+        loadDepartures();
+      }
+    }, 30000);
   </script>
 </body>
 </html>
