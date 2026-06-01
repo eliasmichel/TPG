@@ -23,7 +23,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .prompt { color: #00ff41; font-size: 16px; }
     input {
@@ -50,6 +50,11 @@
     button:hover {
       background: #00ff41;
       color: #0d0d0d;
+    }
+    #lastUpdate {
+      color: #007a1f;
+      font-size: 13px;
+      margin-bottom: 16px;
     }
     #result { margin-top: 10px; }
     .stop-name {
@@ -83,11 +88,6 @@
     .ok { color: #00ff41; }
     .error { color: #ff4444; margin-top: 10px; }
     .loading { color: #007a1f; }
-    #lastUpdate {
-      margin-top: 16px;
-      color: #007a1f;
-      font-size: 13px;
-    }
   </style>
 </head>
 <body>
@@ -100,11 +100,11 @@
     <button onclick="loadDepartures()">EXEC</button>
   </div>
 
-  <div id="result"></div>
   <div id="lastUpdate"></div>
+  <div id="result"></div>
 
   <script>
-    document.getElementById('stopInput').addEventListener('keydown', function(e) {
+    document.getElementById('stopInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') loadDepartures();
     });
 
